@@ -1,0 +1,1457 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0c17">
+<meta property="og:title" content="12 SWITCH">
+<meta property="og:description" content="12個のスイッチに1つだけ電流トラップ。相手の裏をかいて勝て。">
+<style>html,body{margin:0;min-height:100%;background:#0a0c17}</style>
+<title>12 SWITCH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Dela+Gothic+One&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Layout concept: arcade cabinet column. HUD on top, one board of twelve heated switches, one primary action.
+   Single dark look by choice (arcade screen), so every color is set explicitly below. */
+:root{
+  color-scheme:dark;
+  --ink:#0a0c17;
+  --panel:#12162b;
+  --panel-2:#1a1f3c;
+  --line:#2b3262;
+  --text:#e9edfb;
+  --muted:#8e97c4;
+  --p1:#3fd0ff;
+  --p2:#b88aff;
+  --trap:#ff3d6e;
+  --good:#7dffb4;
+  --chat:#06c755;
+  --heat-lo:#5f7ca8;
+  --heat-hi:#ffc928;
+  --font-display:'Dela Gothic One','Noto Sans JP',system-ui,sans-serif;
+  --font-ui:'Chakra Petch','Noto Sans JP',system-ui,sans-serif;
+  --font-body:'Noto Sans JP',system-ui,-apple-system,'Hiragino Sans','Yu Gothic',sans-serif;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--ink);color:var(--text);
+  font:15px/1.6 var(--font-body);
+  padding-inline:16px;padding-block:12px 28px;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(120% 55% at 50% -10%, color-mix(in oklab,var(--p2) 16%,transparent), transparent 62%),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / .02) 0 1px, transparent 1px 3px);
+}
+button{font:inherit;color:inherit}
+[hidden]{display:none!important}
+:focus-visible{outline:3px solid var(--heat-hi);outline-offset:2px}
+.app{position:relative;z-index:1;max-width:560px;margin-inline:auto;display:flex;flex-direction:column;gap:14px}
+.screen{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+/* top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand{font-family:var(--font-display);font-size:1.05rem;letter-spacing:.05em}
+.brand .b12{color:var(--heat-hi)}
+.tools{display:flex;gap:6px}
+.chip-btn{
+  appearance:none;background:transparent;border:1px solid var(--line);color:var(--muted);
+  font-family:var(--font-ui);font-weight:600;font-size:.72rem;letter-spacing:.12em;
+  min-height:36px;padding:6px 11px;border-radius:4px;cursor:pointer;
+}
+.chip-btn[aria-pressed="true"]{color:var(--good);border-color:color-mix(in oklab,var(--good) 55%,var(--line))}
+.quit{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);background:var(--panel);border-radius:4px;font-size:.88rem}
+.quit span{flex:1 1 180px}
+
+/* title */
+.hero{display:flex;align-items:flex-end;gap:14px;padding-top:6px}
+.logo12{
+  font-family:var(--font-display);font-size:clamp(5.5rem,30vw,8rem);line-height:.82;letter-spacing:-.04em;
+  background:linear-gradient(180deg,var(--heat-hi) 8%,color-mix(in oklab,var(--heat-hi) 50%,var(--heat-lo)) 58%,var(--heat-lo));
+  -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 22px color-mix(in oklab,var(--heat-hi) 32%,transparent));
+}
+.logo-side{min-width:0;padding-bottom:4px}
+.logo-word{font-family:var(--font-display);font-size:clamp(1.7rem,9vw,2.4rem);line-height:1;letter-spacing:.06em}
+.tagline{margin:8px 0 0;color:var(--muted);font-size:.95rem;line-height:1.5}
+.mini-board{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.mc{
+  position:relative;overflow:hidden;display:grid;place-items:center;height:42px;border-radius:4px;
+  font-family:var(--font-ui);font-weight:700;font-size:.95rem;
+  --c:color-mix(in oklab,var(--heat-lo),var(--heat-hi) calc(var(--t) * 100%));
+  color:var(--c);border:1px solid color-mix(in oklab,var(--c) 50%,var(--ink));
+  background:color-mix(in oklab,var(--c) 9%,var(--panel));
+}
+.mc::after{content:"";position:absolute;inset:0;background:var(--trap);opacity:0;animation:scan 6s steps(1,end) infinite;animation-delay:calc(var(--d) * .5s)}
+@keyframes scan{0%{opacity:.85}7%{opacity:0}100%{opacity:0}}
+.group{display:flex;flex-direction:column;gap:8px}
+.group-l,.sec-l{margin:0;font-family:var(--font-ui);font-weight:600;font-size:.72rem;letter-spacing:.2em;color:var(--muted)}
+.seg{display:grid;gap:8px}
+.seg.two{grid-template-columns:1fr 1fr}
+.seg.three{grid-template-columns:repeat(3,1fr)}
+.seg-btn{
+  appearance:none;text-align:left;display:flex;flex-direction:column;gap:2px;min-height:62px;
+  padding:10px 12px;border:1px solid var(--line);background:var(--panel);border-radius:4px;cursor:pointer;
+}
+.seg-btn b{font-family:var(--font-ui);font-size:1.05rem;letter-spacing:.04em}
+.seg-btn small{color:var(--muted);font-size:.74rem;line-height:1.3}
+.seg-btn[aria-checked="true"]{
+  border-color:var(--heat-hi);background:color-mix(in oklab,var(--heat-hi) 11%,var(--panel));
+  box-shadow:0 0 0 1px var(--heat-hi);
+}
+.level-desc{margin:0;color:var(--muted);font-size:.86rem;min-height:1.4em}
+.rules{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:2px 14px}
+.rules summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-family:var(--font-ui);font-weight:600;letter-spacing:.12em;font-size:.85rem}
+.rules ol{margin:0 0 12px;padding-left:1.3em;display:flex;flex-direction:column;gap:6px;font-size:.88rem}
+
+/* buttons */
+.cta{
+  appearance:none;border:0;width:100%;min-height:56px;padding:14px 18px;border-radius:6px;cursor:pointer;
+  font-family:var(--font-ui);font-weight:700;font-size:1.05rem;letter-spacing:.08em;color:var(--ink);
+  background:linear-gradient(90deg,var(--heat-lo),var(--heat-hi));
+  box-shadow:inset 0 -4px 0 rgb(0 0 0 / .25),0 8px 24px color-mix(in oklab,var(--heat-hi) 20%,transparent);
+  transition:transform .1s,filter .15s;
+}
+.cta:active{transform:translateY(2px)}
+.cta:disabled{filter:grayscale(1) brightness(.45);cursor:not-allowed;box-shadow:none}
+.cta[data-kind="trap"]{background:linear-gradient(90deg,#ff8a5c,var(--trap));color:#14040b;box-shadow:inset 0 -4px 0 rgb(0 0 0 / .25),0 8px 24px color-mix(in oklab,var(--trap) 28%,transparent)}
+.cta.ghost{background:transparent;color:var(--text);border:1px solid var(--line);box-shadow:none}
+.actions{display:flex;flex-direction:column;gap:10px}
+.actions.two{flex-direction:row}
+.actions.two .cta{flex:1}
+
+/* HUD */
+.hud{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch}
+.pcard{
+  position:relative;min-width:0;display:flex;flex-direction:column;gap:2px;padding:9px 12px 10px;
+  border:1px solid var(--line);background:var(--panel);border-radius:4px;
+  transition:box-shadow .2s,border-color .2s;
+}
+.pcard.right{text-align:right;align-items:flex-end}
+.pcard[data-active="true"]{border-color:var(--pc);box-shadow:0 0 0 1px var(--pc),0 0 20px color-mix(in oklab,var(--pc) 32%,transparent)}
+.pname{font-family:var(--font-ui);font-weight:600;font-size:.7rem;letter-spacing:.12em;color:var(--pc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pscore{font-family:var(--font-ui);font-weight:700;font-size:2.2rem;line-height:1.05;font-variant-numeric:tabular-nums}
+.prole{
+  align-self:flex-start;font-family:var(--font-ui);font-weight:700;font-size:.66rem;letter-spacing:.16em;
+  padding:1px 7px;border-radius:99px;border:1px solid currentColor;
+}
+.pcard.right .prole{align-self:flex-end}
+.prole[data-role="trap"]{color:var(--trap)}
+.prole[data-role="push"]{color:var(--text)}
+.delta{
+  position:absolute;top:6px;right:10px;font-family:var(--font-ui);font-weight:700;font-size:1.3rem;
+  animation:floatUp 1.4s ease-out forwards;pointer-events:none;
+}
+.pcard.right .delta{right:auto;left:10px}
+.delta.pos{color:var(--good)}
+.delta.neg{color:var(--trap)}
+@keyframes floatUp{0%{opacity:0;transform:translateY(8px)}15%{opacity:1}100%{opacity:0;transform:translateY(-22px)}}
+.roundbox{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:84px;text-align:center}
+.rl{font-family:var(--font-ui);font-weight:600;font-size:.64rem;letter-spacing:.24em;color:var(--muted)}
+.rn{font-family:var(--font-ui);font-weight:700;font-size:1.05rem;color:var(--muted)}
+.rn b{font-size:1.9rem;color:var(--text);line-height:1}
+.pips{display:flex;gap:3px}
+.pips i{width:7px;height:7px;border-radius:1px;background:var(--line)}
+.pips i[data-s="done"]{background:var(--muted)}
+.pips i[data-s="now"]{background:var(--heat-hi);box-shadow:0 0 8px var(--heat-hi)}
+.remain{font-size:.7rem;color:var(--muted);letter-spacing:.04em}
+
+/* stage */
+.stage{--bc:var(--heat-hi);display:flex;flex-direction:column;gap:12px;min-width:0}
+.banner{display:flex;flex-direction:column;gap:8px;padding:10px 12px;background:var(--panel);border-left:3px solid var(--bc);border-radius:2px 4px 4px 2px}
+.steps{list-style:none;margin:0;padding:0;display:flex;gap:6px}
+.steps li{
+  font-family:var(--font-ui);font-weight:700;font-size:.66rem;letter-spacing:.16em;color:var(--muted);
+  padding:2px 9px;border:1px solid var(--line);border-radius:99px;
+}
+.steps li.on{background:var(--bc);border-color:var(--bc);color:var(--ink)}
+.msg{margin:0;font-size:.92rem;line-height:1.5;min-height:2.9em}
+.board-wrap{position:relative}
+.board{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px;
+  background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--bc);border-radius:4px;
+}
+.board-wrap.cover .board{visibility:hidden}
+@media (min-width:520px){.board{grid-template-columns:repeat(4,1fr)}}
+.sw{
+  --c:color-mix(in oklab,var(--heat-lo),var(--heat-hi) calc(var(--t) * 100%));
+  position:relative;appearance:none;overflow:hidden;cursor:pointer;min-height:84px;padding:14px 4px 12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  font-family:var(--font-ui);font-weight:700;color:var(--c);
+  border:2px solid color-mix(in oklab,var(--c) 52%,var(--ink));border-radius:6px;
+  background:linear-gradient(180deg,color-mix(in oklab,var(--c) 15%,var(--panel)),color-mix(in oklab,var(--c) 5%,var(--ink)));
+  box-shadow:inset 0 -6px 0 rgb(0 0 0 / .25),0 0 calc(var(--t) * 26px) color-mix(in oklab,var(--c) 38%,transparent);
+  transition:transform .12s,box-shadow .12s,border-color .12s,opacity .3s;
+}
+.sw .num{font-size:2.15rem;line-height:1;font-variant-numeric:tabular-nums}
+.sw .pt{font-size:.64rem;letter-spacing:.16em;color:var(--muted)}
+.sw::after{content:"";position:absolute;left:0;bottom:0;height:5px;width:calc(var(--n) / 12 * 100%);background:var(--c)}
+.sw .flag{position:absolute;top:5px;left:0;right:0;text-align:center;font-size:.58rem;letter-spacing:.2em;color:var(--bc)}
+.sw .bolt{display:none;position:absolute;right:6px;bottom:12px;width:30px;height:30px;color:var(--trap)}
+@media (hover:hover){.board:not([data-mode="locked"]):not([data-mode="reveal"]) .sw:hover{transform:translateY(-2px)}}
+.board[data-mode="locked"] .sw{pointer-events:none;opacity:.55}
+.board[data-mode="reveal"] .sw{pointer-events:none}
+.sw[aria-pressed="true"]{
+  transform:translateY(2px) scale(.97);border-color:var(--bc);
+  box-shadow:0 0 0 3px var(--bc),0 0 26px color-mix(in oklab,var(--bc) 55%,transparent),inset 0 0 18px color-mix(in oklab,var(--bc) 22%,transparent);
+}
+.board[data-mode="trap"] .sw[aria-pressed="true"] .flag::before{content:"TRAP"}
+.board[data-mode="press"] .sw[aria-pressed="true"] .flag::before{content:"PUSH"}
+.sw.mine .flag::before{content:"YOUR TRAP";color:var(--trap)}
+.sw.mine .bolt{display:block;opacity:.55}
+.board.revealing .sw:not(.r-press):not(.r-trap){opacity:.32}
+.sw.r-press{border-color:var(--pc);box-shadow:0 0 0 3px var(--pc),0 0 26px color-mix(in oklab,var(--pc) 55%,transparent);animation:pop .45s ease-out}
+.sw.r-press .flag{color:var(--pc)}
+.sw.r-press .flag::before{content:"PUSH"}
+.sw.r-trap{border-color:var(--trap);box-shadow:0 0 0 3px var(--trap),0 0 30px color-mix(in oklab,var(--trap) 65%,transparent);animation:trapIn .55s ease-out}
+.sw.r-trap .bolt{display:block}
+.sw.r-trap .flag{color:var(--trap)}
+.sw.r-trap .flag::before{content:"TRAP"}
+.sw.r-hit .flag::before{content:"HIT!"}
+.sw.r-hit{background:linear-gradient(180deg,color-mix(in oklab,var(--trap) 40%,var(--panel)),color-mix(in oklab,var(--trap) 18%,var(--ink)))}
+.sw.r-hit .bolt{width:40px;height:40px;animation:zap .5s steps(2,end) 3}
+.board.shock{animation:shake .5s}
+@keyframes pop{0%{transform:scale(.9)}60%{transform:scale(1.07)}100%{transform:scale(1)}}
+@keyframes trapIn{0%{transform:scale(1.2);filter:brightness(2.2)}100%{transform:scale(1);filter:none}}
+@keyframes zap{0%{opacity:1}50%{opacity:.25}100%{opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+
+/* hand-off cover */
+.handoff{
+  position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:18px;
+  background:color-mix(in oklab,var(--ink) 96%,var(--panel));border:1px dashed var(--line);border-radius:4px;
+}
+.handoff-in{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:320px}
+.ho-token{
+  font-family:var(--font-display);font-size:2.4rem;line-height:1;color:var(--pc);
+  padding:10px 20px;border:2px solid var(--pc);border-radius:4px;
+  box-shadow:0 0 24px color-mix(in oklab,var(--pc) 35%,transparent);
+}
+.handoff h2{margin:0;font-family:var(--font-display);font-weight:400;font-size:1.25rem}
+.handoff p{margin:0;color:var(--muted);font-size:.9rem}
+
+/* result */
+.result{padding:14px;border:1px solid var(--line);background:var(--panel);border-radius:4px;display:flex;flex-direction:column;gap:6px;animation:pop .35s ease-out}
+.res-tag{font-family:var(--font-ui);font-weight:700;font-size:.72rem;letter-spacing:.22em;color:var(--muted)}
+.res-big{font-family:var(--font-display);font-size:2.3rem;line-height:1.1}
+.res-big.good{color:var(--good)}
+.res-big.bad{color:var(--trap)}
+.res-text{margin:0;font-size:.95rem}
+.res-ai{margin:0;font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;margin-top:4px}
+
+/* memo */
+.memo{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:0 14px}
+.memo summary{cursor:pointer;min-height:46px;display:flex;align-items:center;font-family:var(--font-ui);font-weight:600;font-size:.82rem;letter-spacing:.14em}
+.memo-body{display:flex;flex-direction:column;gap:14px;padding-bottom:14px}
+.tend{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tcol{min-width:0;display:flex;flex-direction:column;gap:10px}
+.tcol h4{margin:0;font-family:var(--font-ui);font-size:.74rem;letter-spacing:.14em;color:var(--pc)}
+.mini{display:flex;flex-direction:column;gap:3px}
+.mini-l{font-size:.7rem;color:var(--muted)}
+.bars{display:flex;gap:2px;align-items:flex-end;height:36px;border-bottom:1px solid var(--line)}
+.bars i{flex:1;min-width:0;height:max(2px,calc(var(--h) * 100%));background:var(--pc);opacity:.92}
+.bars i[data-c="0"]{opacity:.22;height:2px}
+.axis{display:flex;justify-content:space-between;font-family:var(--font-ui);font-size:.64rem;color:var(--muted)}
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.hist li{display:grid;grid-template-columns:2.2em 1fr auto;gap:8px;align-items:baseline;font-size:.82rem;padding:6px 0;border-top:1px solid var(--line)}
+.hist .r{font-family:var(--font-ui);font-weight:700;color:var(--muted)}
+.hist .who{color:var(--pc);font-weight:700}
+.hist .d{font-family:var(--font-ui);font-weight:700;font-variant-numeric:tabular-nums}
+.good{color:var(--good)}
+.bad{color:var(--trap)}
+.empty{margin:0;color:var(--muted);font-size:.84rem}
+
+/* final */
+.verdict{display:flex;flex-direction:column;gap:2px;padding-top:6px}
+.v-sub{font-family:var(--font-ui);font-weight:600;font-size:.74rem;letter-spacing:.24em;color:var(--muted)}
+.v-main{
+  font-family:var(--font-display);font-size:clamp(2.6rem,15vw,4rem);line-height:1;
+  background:linear-gradient(90deg,var(--heat-lo),var(--heat-hi));
+  -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+}
+.v-main[data-r="lose"]{background:linear-gradient(90deg,#6c7399,var(--trap));-webkit-background-clip:text;background-clip:text}
+.final-score{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.fs{display:flex;flex-direction:column;gap:2px;padding:12px;border:1px solid var(--line);background:var(--panel);border-radius:4px}
+.fs.right{text-align:right}
+.fs.win{border-color:var(--pc);box-shadow:0 0 0 1px var(--pc),0 0 22px color-mix(in oklab,var(--pc) 30%,transparent)}
+.fs .n{font-family:var(--font-ui);font-weight:600;font-size:.72rem;letter-spacing:.14em;color:var(--pc)}
+.fs .s{font-family:var(--font-ui);font-weight:700;font-size:2.8rem;line-height:1;font-variant-numeric:tabular-nums}
+.fs .tag{font-family:var(--font-ui);font-weight:700;font-size:.68rem;letter-spacing:.18em;color:var(--muted)}
+.fs.win .tag{color:var(--pc)}
+.vs{font-family:var(--font-ui);font-weight:700;color:var(--muted);letter-spacing:.1em}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{min-width:0;padding:12px;border:1px solid var(--line);background:var(--panel);border-radius:4px}
+.stat h3{margin:0 0 8px;font-family:var(--font-ui);font-size:.74rem;letter-spacing:.14em;color:var(--pc)}
+.stat dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:5px 8px;font-size:.8rem}
+.stat dt{color:var(--muted)}
+.stat dd{margin:0;font-family:var(--font-ui);font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.stat dd.tot{border-top:1px solid var(--line);padding-top:5px}
+.stat dt.wide{grid-column:1/-1}
+.stat dd.wide{grid-column:1/-1;text-align:left;font-size:1.05rem}
+.stat dt.tot{border-top:1px solid var(--line);padding-top:5px;color:var(--text)}
+.logwrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+.log{width:100%;border-collapse:collapse;font-size:.78rem}
+.log th{font-family:var(--font-ui);font-weight:600;font-size:.64rem;letter-spacing:.08em;color:var(--muted);text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+.log th:nth-child(n+4){text-align:right}
+.log td{padding:8px 6px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.log td.num,.log td:first-child{white-space:nowrap}
+.log tr:first-child td{border-top:0}
+.log .who{font-weight:700;color:var(--pc)}
+.log .hit{color:var(--trap);font-weight:700}
+.log .num{font-family:var(--font-ui);font-weight:700;text-align:right}
+
+/* LINE共有・オンライン */
+a.cta{display:flex;align-items:center;justify-content:center;text-decoration:none}
+.cta.line{background:var(--chat);color:#04210f;box-shadow:inset 0 -4px 0 rgb(0 0 0 / .22),0 8px 24px color-mix(in oklab,var(--chat) 24%,transparent)}
+.cta.ghost.share{border-color:var(--chat);color:var(--chat)}
+.seg.three .seg-btn{padding:10px}
+.seg.three .seg-btn b{font-size:.98rem}
+.field{
+  width:100%;min-height:48px;padding:8px 12px;border:1px solid var(--line);background:var(--panel);color:var(--text);
+  border-radius:4px;font-family:var(--font-ui);font-weight:600;font-size:1.05rem;letter-spacing:.12em;
+}
+.field::placeholder{color:var(--muted);letter-spacing:.04em;font-weight:500;font-size:.9rem}
+.join-row{display:flex;gap:8px}
+.join-row .field{flex:1;min-width:0;text-transform:uppercase}
+.join-row .cta{width:auto;min-width:92px}
+.lobby{display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px 12px;border:1px dashed var(--line);border-radius:4px;background:var(--panel);text-align:center}
+.code-big{
+  font-family:var(--font-display);font-size:clamp(3rem,18vw,4.5rem);line-height:1;letter-spacing:.14em;padding-left:.14em;
+  color:var(--heat-hi);text-shadow:0 0 22px color-mix(in oklab,var(--heat-hi) 35%,transparent);
+}
+.field.url{font-size:.82rem;letter-spacing:0;font-weight:500}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .mc::after{animation:none;opacity:0}
+}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><span class="b12">12</span> SWITCH</div>
+    <div class="tools">
+      <button class="chip-btn" id="btnSound" type="button" aria-pressed="false">SOUND OFF</button>
+      <button class="chip-btn" id="btnMenu" type="button" hidden>MENU</button>
+    </div>
+  </header>
+
+  <div class="quit" id="quitBar" hidden>
+    <span>ゲームを中断してメニューに戻りますか。</span>
+    <button class="chip-btn" id="quitYes" type="button">戻る</button>
+    <button class="chip-btn" id="quitNo" type="button">続ける</button>
+  </div>
+
+  <!-- title -->
+  <section id="screenTitle" class="screen">
+    <div class="hero">
+      <div class="logo12" aria-hidden="true">12</div>
+      <div class="logo-side">
+        <div class="logo-word">SWITCH</div>
+        <p class="tagline">12個のスイッチ。<br>1つだけ、電流が走る。</p>
+      </div>
+    </div>
+    <div class="mini-board" id="miniBoard" aria-hidden="true"></div>
+
+    <div class="group">
+      <h2 class="group-l">MODE</h2>
+      <div class="seg two" role="radiogroup" aria-label="モード">
+        <button class="seg-btn" type="button" role="radio" data-mode="pvp" aria-checked="false"><b>2人対戦</b><small>同じ端末で</small></button>
+        <button class="seg-btn" type="button" role="radio" data-mode="ai" aria-checked="true"><b>AI対戦</b><small>3段階</small></button>
+      </div>
+    </div>
+    <div class="group" id="levelGroup">
+      <h2 class="group-l">AI LEVEL</h2>
+      <div class="seg three" role="radiogroup" aria-label="AIの強さ">
+        <button class="seg-btn" type="button" role="radio" data-level="1" aria-checked="false"><b>初級</b></button>
+        <button class="seg-btn" type="button" role="radio" data-level="2" aria-checked="true"><b>中級</b></button>
+        <button class="seg-btn" type="button" role="radio" data-level="3" aria-checked="false"><b>上級</b></button>
+      </div>
+      <p class="level-desc" id="levelDesc"></p>
+    </div>
+    <div class="group" id="onlineGroup" hidden>
+      <h2 class="group-l">ONLINE</h2>
+      <p class="level-desc" id="olStatus"></p>
+      <button class="cta" id="btnCreate" type="button" disabled>部屋を作って友達を招待</button>
+      <div class="join-row">
+        <input class="field" id="joinCode" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="部屋コード(4文字)" aria-label="部屋コード">
+        <button class="cta ghost" id="btnJoin" type="button" disabled>参加</button>
+      </div>
+    </div>
+    <button class="cta" id="btnStart" type="button">GAME START</button>
+    <a class="cta ghost share" id="btnShareApp" href="#" target="_blank" rel="noopener noreferrer">LINEで友達に教える</a>
+    <details class="rules">
+      <summary>遊び方</summary>
+      <ol>
+        <li>スイッチは1〜12。押すと、書かれた数字がそのまま得点になります。</li>
+        <li>毎ラウンド、片方がトラップを仕掛ける側、もう片方が押す側です。ラウンドごとに役が交代します。</li>
+        <li>仕掛ける側は、1つのスイッチに電流トラップを隠します。押す側には見えません。</li>
+        <li>トラップを踏むと押した側が−12点、仕掛けた側が+12点。踏まれなければ、仕掛けた側は0点です。</li>
+        <li>全8ラウンドの合計点で勝敗を決めます。</li>
+      </ol>
+    </details>
+  </section>
+
+  <!-- game -->
+  <section id="screenGame" class="screen" hidden>
+    <div class="hud">
+      <div class="pcard" id="pc0" style="--pc:var(--p1)">
+        <div class="pname"></div><div class="pscore">0</div><div class="prole"></div>
+      </div>
+      <div class="roundbox">
+        <div class="rl">ROUND</div>
+        <div class="rn"><b id="roundNo">1</b>/8</div>
+        <div class="pips" id="pips"></div>
+        <div class="remain" id="remain"></div>
+      </div>
+      <div class="pcard right" id="pc1" style="--pc:var(--p2)">
+        <div class="pname"></div><div class="pscore">0</div><div class="prole"></div>
+      </div>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="banner">
+        <ol class="steps">
+          <li data-s="trap">TRAP</li><li data-s="press">PUSH</li><li data-s="open">OPEN</li>
+        </ol>
+        <p class="msg" id="bannerMsg"></p>
+      </div>
+      <div class="board-wrap" id="boardWrap">
+        <div class="board" id="board" data-mode="locked"></div>
+        <div class="handoff" id="handoff" hidden>
+          <div class="handoff-in">
+            <div class="ho-token" id="hoToken"></div>
+            <h2 id="hoTitle"></h2>
+            <p id="hoText"></p>
+            <button class="cta" id="btnReady" type="button">準備OK。スイッチを見る</button>
+          </div>
+        </div>
+      </div>
+      <div class="result" id="result" hidden>
+        <div class="res-tag" id="resTag"></div>
+        <div class="res-big" id="resBig"></div>
+        <p class="res-text" id="resText"></p>
+        <p class="res-ai" id="resAi" hidden></p>
+      </div>
+      <div class="actions">
+        <button class="cta" id="btnConfirm" type="button" hidden disabled>トラップを仕掛ける</button>
+        <button class="cta" id="btnNext" type="button" hidden>次のラウンドへ</button>
+      </div>
+    </div>
+
+    <details class="memo" id="memo">
+      <summary>読み合いメモ</summary>
+      <div class="memo-body" id="memoBody"></div>
+    </details>
+  </section>
+
+  <!-- lobby -->
+  <section id="screenLobby" class="screen" hidden>
+    <div class="lobby">
+      <div class="group-l">ROOM CODE</div>
+      <div class="code-big" id="lobbyCode" aria-live="polite"></div>
+      <p class="level-desc" id="lobbyStatus"></p>
+    </div>
+    <div class="group" id="lobbyShare">
+      <h2 class="group-l">友達を招待</h2>
+      <a class="cta line" id="lobbyLine" href="#" target="_blank" rel="noopener noreferrer">LINEで招待を送る</a>
+      <input class="field url" id="lobbyUrl" type="text" readonly aria-label="招待リンク">
+      <button class="cta ghost" id="lobbyCopy" type="button">リンクをコピー</button>
+      <p class="level-desc">友達がリンクを開くと自動で対戦が始まります。オンライン対戦には、友達がこのページの編集権限を持っている必要があります。</p>
+    </div>
+    <button class="cta ghost" id="lobbyCancel" type="button">やめる</button>
+  </section>
+
+  <!-- final -->
+  <section id="screenFinal" class="screen" hidden>
+    <div class="verdict">
+      <div class="v-sub" id="vSub"></div>
+      <div class="v-main" id="vMain"></div>
+    </div>
+    <div class="final-score" id="finalScore"></div>
+    <div class="stats" id="stats"></div>
+    <h2 class="sec-l">ROUND LOG</h2>
+    <div class="logwrap"><table class="log" id="logTable"></table></div>
+    <div class="actions two">
+      <button class="cta" id="btnAgain" type="button">もう一度</button>
+      <button class="cta ghost" id="btnBack" type="button">メニューへ</button>
+    </div>
+    <a class="cta ghost share" id="btnShareResult" href="#" target="_blank" rel="noopener noreferrer">結果をLINEで送る</a>
+  </section>
+</div>
+
+<script id="core">
+/* ===== ルールとAIの中核。DOMには触れない。 ===== */
+const TS_CORE = (function () {
+  'use strict';
+  const N = 12, ROUNDS = 8, PEN = 12, K = PEN + PEN;   // 踏まれると押した側-12、仕掛けた側+12。差は24。
+  const range = Array.from({ length: N }, (_, i) => i + 1);
+  const sum = a => a.reduce((x, y) => x + y, 0);
+  const normalize = a => { const s = sum(a) || 1; return a.map(x => x / s); };
+
+  /* 1ラウンドの得点。同じラウンドで両者が得点することはない。 */
+  function resolveRound(trap, press) {
+    if (trap === press) return { hit: true, pressDelta: -PEN, trapDelta: PEN };
+    return { hit: false, pressDelta: press, trapDelta: 0 };
+  }
+  /* 奇数ラウンドはプレイヤー0が仕掛ける側、偶数ラウンドはプレイヤー1。 */
+  function trapperOf(round) { return round % 2 === 1 ? 0 : 1; }
+
+  /* ---- ゼロ和ゲームの均衡 ----
+     押す側の得失差 V(n)=n-(n+24)T(n)、仕掛ける側の得失差 (24+t)Q(t)-const から導く。 */
+  const EQ = (function () {
+    for (let s = 1; s <= N; s++) {
+      let a = 0, b = 0;
+      for (let n = s; n <= N; n++) { a += n / (n + K); b += 1 / (n + K); }
+      const v = (a - 1) / b;
+      if (s > v && (s === 1 || s - 1 <= v)) {
+        const trap = [], press = [];
+        for (let n = 1; n <= N; n++) {
+          trap.push(n >= s ? (n - v) / (n + K) : 0);
+          press.push(n >= s ? (1 / (n + K)) / b : 0);
+        }
+        return { v, s, cTrap: 1 / b, trap: normalize(trap), press: normalize(press) };
+      }
+    }
+    throw new Error('no equilibrium');
+  })();
+
+  const vPress = (n, T) => n - (n + K) * T[n - 1];   // 押す側の期待得失差
+  const vTrap = (t, Q) => (K + t) * Q[t - 1];        // 仕掛ける側の期待得失差(定数項を除く)
+
+  function softmax(vals, tau) {
+    const m = Math.max(...vals);
+    return normalize(vals.map(v => Math.exp((v - m) / tau)));
+  }
+  function sample(p) {
+    let r = Math.random(), acc = 0;
+    for (let i = 0; i < p.length; i++) { acc += p[i]; if (r <= acc) return i + 1; }
+    return p.length;
+  }
+  const mixDist = (a, b, lam) => normalize(a.map((x, i) => (1 - lam) * x + lam * b[i]));
+
+  const BIAS_PRESS = normalize(range.map(n => Math.pow(n, 1.3)));   // 人は高い数字を押しがち
+  const BIAS_TRAP = normalize(range.map(n => Math.pow(n, 0.9)));
+
+  /* 履歴(公開済みのラウンドだけ)から、あるプレイヤーの選択列を取り出す。 */
+  function seq(history, who, role) {
+    const out = [];
+    for (const h of history) {
+      if (role === 'press' && h.presser === who) out.push(h.press);
+      if (role === 'trap' && h.trapper === who) out.push(h.trap);
+    }
+    return out;
+  }
+  function freqDist(sequence, prior, strength, decay) {
+    const c = new Array(N).fill(0), L = sequence.length;
+    sequence.forEach((n, i) => { c[n - 1] += Math.pow(decay, L - 1 - i); });
+    return normalize(prior.map((p, i) => c[i] + strength * p));
+  }
+
+  /* 相手の次の手を予測する4つのモデル: 均衡 / 頻度 / こちらの履歴への最善応答 / 直前の手からのずらし */
+  const MODEL_IDS = ['eq', 'freq', 'br', 'shift'];
+  function oppModels(history, me, role) {
+    const opp = 1 - me;
+    const eq = role === 'trap' ? EQ.trap : EQ.press;
+    const bias = role === 'trap' ? BIAS_TRAP : BIAS_PRESS;
+    const prior = normalize(eq.map((p, i) => 0.5 * p + 0.5 * bias[i]));
+    const own = seq(history, opp, role);
+    const freq = freqDist(own, prior, 1.5, 0.85);
+    let br;
+    if (role === 'trap') {
+      const q = freqDist(seq(history, me, 'press'), EQ.press, 1.5, 0.9);
+      br = softmax(range.map(t => vTrap(t, q)), 0.9);
+    } else {
+      const t = freqDist(seq(history, me, 'trap'), EQ.trap, 1.5, 0.9);
+      br = softmax(range.map(n => vPress(n, t)), 1.6);
+    }
+    const last = own.length ? own[own.length - 1] : null;
+    let shift = prior;
+    if (last !== null) {
+      shift = normalize(range.map(n => (n === last ? 0.25 : Math.exp(-Math.abs(n - last) / 1.5)) * prior[n - 1] * N));
+    }
+    return [eq, freq, br, shift];
+  }
+  /* 過去の相手の行動を各モデルで再現し、当たっていたモデルに重みを置く。 */
+  function modelWeights(history, me, role) {
+    const opp = 1 - me;
+    let ll = [0, 0, 0, 0], n = 0;
+    for (let j = 0; j < history.length; j++) {
+      const h = history[j];
+      const acted = role === 'trap' ? h.trapper === opp : h.presser === opp;
+      if (!acted) continue;
+      const ms = oppModels(history.slice(0, j), me, role);
+      const a = role === 'trap' ? h.trap : h.press;
+      ll = ll.map((x, k) => x * 0.85 + Math.log(Math.max(ms[k][a - 1], 0.01)));
+      n++;
+    }
+    const mx = Math.max(...ll);
+    const w = normalize(ll.map(x => Math.exp(0.8 * (x - mx)))).map(x => 0.8 * x + 0.2 / 4);
+    return { w, n };
+  }
+  function predictOpp(history, me, role) {
+    const { w } = modelWeights(history, me, role);
+    const ms = oppModels(history, me, role);
+    const mix = range.map((_, i) => sum(ms.map((m, k) => w[k] * m[i])));
+    const eq = role === 'trap' ? EQ.trap : EQ.press;
+    return mixDist(mix, eq, 0.15);
+  }
+  /* 自分の癖がどれだけ読まれやすいか。大きいほど均衡に寄せて意外性を出す。 */
+  function exposure(history, me, role) {
+    if (role === 'trap') {
+      const T = freqDist(seq(history, me, 'trap'), EQ.trap, 1.0, 0.9);
+      return Math.max(...range.map(n => vPress(n, T))) - EQ.v;
+    }
+    const Q = freqDist(seq(history, me, 'press'), EQ.press, 1.0, 0.9);
+    return Math.max(...range.map(t => vTrap(t, Q))) - EQ.cTrap;
+  }
+
+  function novice(history, role, me) {
+    const opp = 1 - me;
+    let w;
+    if (role === 'trap') {
+      w = range.map(n => n);
+      const lastP = seq(history, opp, 'press').slice(-1)[0];
+      if (lastP) w[lastP - 1] *= 2.5;           // 相手の直前の押下を繰り返すと思い込む
+    } else {
+      w = range.map(n => Math.pow(n, 1.7));
+      const lastT = seq(history, opp, 'trap').slice(-1)[0];
+      if (lastT) w[lastT - 1] *= 0.25;          // 直前に仕掛けられた数字は避ける
+    }
+    return sample(mixDist(normalize(w), range.map(() => 1 / N), 0.25));
+  }
+
+  /* 「role」はAI自身の役。'trap'ならAIが仕掛ける、'press'ならAIが押す。
+     受け取るのは公開済みの履歴だけで、現ラウンドの隠された情報は引数にない。 */
+  function decide(level, history, role, me) {
+    if (level <= 1) return novice(history, role, me);
+    const opp = 1 - me;
+    if (role === 'trap') {
+      const Q = level >= 3
+        ? predictOpp(history, me, 'press')
+        : freqDist(seq(history, opp, 'press'), BIAS_PRESS, 2, 0.9);
+      const exploit = softmax(range.map(t => vTrap(t, Q)), level >= 3 ? 0.8 : 1.4);
+      const lam = level >= 3 ? Math.min(0.6, 0.2 + 0.3 * Math.max(0, exposure(history, me, 'trap'))) : 0.3;
+      return sample(mixDist(exploit, EQ.trap, lam));
+    }
+    const T = level >= 3
+      ? predictOpp(history, me, 'trap')
+      : freqDist(seq(history, opp, 'trap'), BIAS_TRAP, 2, 0.9);
+    const exploit = softmax(range.map(n => vPress(n, T)), level >= 3 ? 1.2 : 2.2);
+    const lam = level >= 3 ? Math.min(0.6, 0.2 + 0.3 * Math.max(0, exposure(history, me, 'press'))) : 0.3;
+    return sample(mixDist(exploit, EQ.press, lam));
+  }
+
+  const LABELS = { eq: 'バランス型', freq: '同じ数字を選びがちなタイプ', br: 'こちらの履歴を読んで動くタイプ', shift: '直前の手から少しずらすタイプ' };
+  /* ラウンド後に見せる、AIの相手理解(過去の公開情報だけから作る)。 */
+  function insight(history, level, me) {
+    if (level <= 1 || !history.length) return null;
+    const opp = 1 - me;
+    if (level === 2) {
+      const p = seq(history, opp, 'press');
+      if (!p.length) return null;
+      const avg = sum(p) / p.length;
+      const high = Math.round(100 * p.filter(n => n >= 9).length / p.length);
+      return `AIの読み: あなたが押した数字の平均は${avg.toFixed(1)}、9以上は${high}%。`;
+    }
+    const last = history[history.length - 1];
+    const role = last.trapper === opp ? 'trap' : 'press';
+    const { w, n } = modelWeights(history, me, role);
+    if (n < 2) return 'AIの読み: まだ材料が足りません。';
+    const k = w.indexOf(Math.max(...w));
+    if (w[k] < 0.36) return 'AIの読み: あなたの狙いを絞り切れていません。';
+    return `AIの読み: あなたは「${LABELS[MODEL_IDS[k]]}」と見ています。`;
+  }
+
+  return {
+    N, ROUNDS, PEN, EQ, resolveRound, trapperOf, vPress, vTrap,
+    ai: {
+      trap: (history, level, me = 1) => decide(level, history, 'trap', me),
+      press: (history, level, me = 1) => decide(level, history, 'press', me),
+      insight: (history, level, me = 1) => insight(history, level, me)
+    }
+  };
+})();
+</script>
+
+<script id="ui">
+(function () {
+  'use strict';
+  const C = TS_CORE;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const FAST = !!window.__FAST__;
+  const wait = ms => new Promise(res => setTimeout(res, FAST ? 0 : ms));
+  const PCOL = ['var(--p1)', 'var(--p2)'];
+  const LEVELS = {
+    1: { name: '初級', desc: '直感で動く。高い数字が好き。' },
+    2: { name: '中級', desc: 'あなたの癖を数えて、傾向を突いてくる。' },
+    3: { name: '上級', desc: 'あなたが読んでいる可能性まで読んでくる。' }
+  };
+
+  const cfg = { mode: 'ai', level: 2 };
+  let titleSync = () => {};
+  const state = { mode: 'ai', level: 2, round: 1, scores: [0, 0], history: [], phase: 'title', selected: null, trapper: 0, presser: 1, gen: 0, handoffNext: null };
+  let hiddenTrap = null;   // 仕掛けられた位置。この変数以外のどこにも書かない(DOM・state・履歴にも入れない)。
+
+  const snapshot = () => state.history.map(h => Object.assign({}, h));
+  const names = () => {
+    if (state.mode === 'online') { const a = ['', '']; a[ol.seat] = 'あなた'; a[1 - ol.seat] = '相手'; return a; }
+    return state.mode === 'ai' ? ['あなた', 'AI'] : ['P1', 'P2'];
+  };
+  const label = i => {
+    if (state.mode === 'online') return i === ol.seat ? 'YOU' : 'FRIEND';
+    return state.mode === 'ai' ? (i === 0 ? 'YOU' : 'AI · ' + LEVELS[state.level].name) : 'PLAYER ' + (i + 1);
+  };
+
+  /* ---- サウンド ---- */
+  let soundOn = false, ac = null;
+  try { soundOn = localStorage.getItem('12sw-sound') === '1'; } catch (e) { /* 保存できなくても動く */ }
+  function tone(f, d, type, vol, delay) {
+    if (!soundOn) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === 'suspended') ac.resume();
+      const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(f, t);
+      g.gain.setValueAtTime(vol || 0.035, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+    } catch (e) { /* 音が出なくても進行する */ }
+  }
+  const sfx = {
+    tap() { tone(620, 0.05); },
+    set() { tone(330, 0.08); tone(494, 0.1, 'square', 0.035, 0.08); },
+    hit() { tone(180, 0.35, 'sawtooth', 0.06); tone(90, 0.4, 'square', 0.05, 0.05); },
+    ok() { tone(523, 0.08); tone(659, 0.08, 'square', 0.035, 0.08); tone(784, 0.14, 'square', 0.035, 0.16); },
+    win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.16, 'square', 0.04, i * 0.12)); },
+    lose() { [392, 330, 262].forEach((f, i) => tone(f, 0.22, 'sawtooth', 0.04, i * 0.16)); }
+  };
+  function buzz(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) { /* 非対応端末 */ } }
+  function renderSound() {
+    const b = $('#btnSound');
+    b.textContent = soundOn ? 'SOUND ON' : 'SOUND OFF';
+    b.setAttribute('aria-pressed', String(soundOn));
+  }
+
+  /* ---- 画面切り替え ---- */
+  function showScreen(name) {
+    ['Title', 'Game', 'Lobby', 'Final'].forEach(n => { $('#screen' + n).hidden = (n !== name); });
+    $('#btnMenu').hidden = (name === 'Title' || name === 'Lobby');
+    $('#quitBar').hidden = true;
+  }
+
+  /* ---- タイトル ---- */
+  (function initTitle() {
+    const mb = $('#miniBoard');
+    const perm = Array.from({ length: 12 }, (_, i) => i).sort(() => Math.random() - 0.5);
+    for (let n = 1; n <= 12; n++) {
+      const d = document.createElement('div');
+      d.className = 'mc'; d.textContent = n;
+      d.style.setProperty('--t', ((n - 1) / 11).toFixed(3));
+      d.style.setProperty('--d', perm[n - 1]);
+      mb.appendChild(d);
+    }
+    function sync() {
+      $$('[data-mode]', $('#screenTitle')).forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === cfg.mode)));
+      $$('[data-level]', $('#screenTitle')).forEach(b => b.setAttribute('aria-checked', String(+b.dataset.level === cfg.level)));
+      $('#levelGroup').hidden = cfg.mode !== 'ai';
+      $('#onlineGroup').hidden = cfg.mode !== 'online';
+      $('#btnStart').hidden = cfg.mode === 'online';
+      $('#levelDesc').textContent = LEVELS[cfg.level].desc;
+      if (cfg.mode === 'online') olCheck();
+    }
+    $$('[data-mode]', $('#screenTitle')).forEach(b => b.addEventListener('click', () => { cfg.mode = b.dataset.mode; sfx.tap(); sync(); }));
+    $$('[data-level]', $('#screenTitle')).forEach(b => b.addEventListener('click', () => { cfg.level = +b.dataset.level; sfx.tap(); sync(); }));
+    $('#btnStart').addEventListener('click', () => { sfx.ok(); startGame(cfg.mode, cfg.level); });
+    titleSync = sync;
+    sync();
+  })();
+
+  /* ---- 盤面 ---- */
+  const board = $('#board');
+  (function buildBoard() {
+    for (let n = 1; n <= 12; n++) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'sw'; b.dataset.n = n;
+      b.style.setProperty('--n', n); b.style.setProperty('--t', ((n - 1) / 11).toFixed(3));
+      b.setAttribute('aria-pressed', 'false');
+      b.setAttribute('aria-label', 'スイッチ' + n + '(' + n + '点)');
+      b.innerHTML = '<span class="flag"></span>' +
+        '<svg class="bolt" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z" fill="currentColor"/></svg>' +
+        '<span class="num">' + n + '</span><span class="pt">' + n + ' PT</span>';
+      b.addEventListener('click', () => pick(n));
+      board.appendChild(b);
+    }
+  })();
+  const cell = n => $('.sw[data-n="' + n + '"]', board);
+  const stage = $('#stage');
+
+  function setStep(step, color) {
+    $$('.steps li').forEach(li => li.classList.toggle('on', li.dataset.s === step));
+    stage.style.setProperty('--bc', color);
+  }
+  function setBanner(step, msg, color) { setStep(step, color); $('#bannerMsg').textContent = msg; }
+  function lockBoard() { board.dataset.mode = 'locked'; }
+  function clearSelection() {
+    state.selected = null;
+    $$('.sw', board).forEach(b => b.setAttribute('aria-pressed', 'false'));
+    $('#btnConfirm').disabled = true;
+  }
+  function clearMarks() {
+    $$('.sw', board).forEach(b => b.classList.remove('r-press', 'r-trap', 'r-hit', 'mine'));
+    board.classList.remove('revealing', 'shock');
+  }
+  function setActive(p) {
+    [0, 1].forEach(i => { $('#pc' + i).dataset.active = String(i === p); });
+  }
+  function hideResult() { $('#result').hidden = true; }
+  function hideHandoff() { $('#handoff').hidden = true; $('#boardWrap').classList.remove('cover'); }
+
+  function renderHud() {
+    [0, 1].forEach(i => {
+      const card = $('#pc' + i);
+      $('.pname', card).textContent = label(i);
+      $('.pscore', card).textContent = state.scores[i];
+      const role = $('.prole', card), isTrap = state.trapper === i;
+      role.textContent = isTrap ? 'TRAP' : 'PUSH';
+      role.dataset.role = isTrap ? 'trap' : 'push';
+    });
+    $('#roundNo').textContent = state.round;
+    const pips = $('#pips');
+    if (!pips.children.length) for (let i = 0; i < C.ROUNDS; i++) pips.appendChild(document.createElement('i'));
+    $$('i', pips).forEach((el, idx) => { el.dataset.s = idx + 1 < state.round ? 'done' : idx + 1 === state.round ? 'now' : 'next'; });
+    $('#remain').textContent = state.round === C.ROUNDS ? 'FINAL ROUND' : 'あと' + (C.ROUNDS - state.round) + 'ラウンド';
+  }
+  function countTo(el, from, to) {
+    if (FAST || from === to) { el.textContent = to; return; }
+    const t0 = performance.now(), d = 600;
+    (function step(t) {
+      const k = Math.min(1, (t - t0) / d);
+      el.textContent = Math.round(from + (to - from) * k);
+      if (k < 1) requestAnimationFrame(step);
+    })(t0);
+  }
+  function floatDelta(i, v) {
+    if (v === 0) return;
+    const s = document.createElement('span');
+    s.className = 'delta ' + (v > 0 ? 'pos' : 'neg');
+    s.textContent = (v > 0 ? '+' : '−') + Math.abs(v);
+    $('#pc' + i).appendChild(s);
+    setTimeout(() => s.remove(), 1500);
+  }
+
+  /* ---- 読み合いメモ(公開済みの情報だけ) ---- */
+  function chart(title, arr) {
+    const mx = Math.max(1, ...arr);
+    return '<div class="mini"><span class="mini-l">' + title + '</span><div class="bars">' +
+      arr.map((c, i) => '<i style="--h:' + (c / mx).toFixed(3) + '" data-c="' + c + '" title="' + (i + 1) + ': ' + c + '回"></i>').join('') +
+      '</div><div class="axis"><span>1</span><span>6</span><span>12</span></div></div>';
+  }
+  function renderMemo() {
+    const body = $('#memoBody'), nm = names();
+    if (!state.history.length) {
+      body.innerHTML = '<p class="empty">公開されたラウンドがここにたまります。相手が選んだ数字の偏りを読み取ろう。</p>';
+      return;
+    }
+    let html = '<div class="tend">';
+    [0, 1].forEach(p => {
+      const pr = new Array(12).fill(0), tr = new Array(12).fill(0);
+      state.history.forEach(h => { if (h.presser === p) pr[h.press - 1]++; if (h.trapper === p) tr[h.trap - 1]++; });
+      html += '<div class="tcol" style="--pc:' + PCOL[p] + '"><h4>' + nm[p] + '</h4>' + chart('押した数字', pr) + chart('仕掛けた数字', tr) + '</div>';
+    });
+    html += '</div><ol class="hist">';
+    state.history.forEach(h => {
+      const d = h.hit ? '<span class="d bad">TRAP −12 / +12</span>' : '<span class="d good">+' + h.press + '</span>';
+      html += '<li><span class="r">R' + h.round + '</span><span><span class="who" style="--pc:' + PCOL[h.trapper] + '">' + nm[h.trapper] + '</span>が' + h.trap +
+        'に仕掛け、<span class="who" style="--pc:' + PCOL[h.presser] + '">' + nm[h.presser] + '</span>が' + h.press + 'を押した</span>' + d + '</li>';
+    });
+    html += '</ol>';
+    body.innerHTML = html;
+  }
+
+  /* ---- ゲーム進行 ---- */
+  function startGame(mode, level) {
+    state.gen++;
+    state.mode = mode; state.level = level; state.round = 1; state.scores = [0, 0]; state.history = [];
+    state.selected = null; hiddenTrap = null;
+    $('#memo').open = false;
+    $('#btnAgain').hidden = false;
+    showScreen('Game'); renderMemo(); beginRound();
+  }
+
+  async function beginRound() {
+    const g = state.gen;
+    state.trapper = C.trapperOf(state.round);
+    state.presser = 1 - state.trapper;
+    state.selected = null; hiddenTrap = null;
+    clearMarks(); clearSelection(); hideResult(); hideHandoff();
+    $('#btnNext').hidden = true; $('#btnConfirm').hidden = true;
+    renderHud();
+    if (state.mode === 'online') { state.phase = 'olwait'; olSync(); return; }
+    if (state.mode === 'ai') {
+      if (state.trapper === 0) { enterTrapPhase(); return; }
+      state.phase = 'aithink'; lockBoard(); setActive(1);
+      setBanner('trap', 'AIがトラップを仕掛けています…', 'var(--trap)');
+      await wait(1100); if (g !== state.gen) return;
+      hiddenTrap = C.ai.trap(snapshot(), state.level);
+      enterPressPhase();
+    } else {
+      showHandoff(state.trapper, 'trap');
+    }
+  }
+
+  function showHandoff(player, next) {
+    state.phase = 'handoff'; state.handoffNext = next;
+    clearSelection(); clearMarks(); lockBoard(); hideResult();
+    $('#btnConfirm').hidden = true; $('#btnNext').hidden = true;
+    const nm = names(), other = nm[1 - player];
+    $('#hoToken').textContent = nm[player];
+    $('#hoToken').style.setProperty('--pc', PCOL[player]);
+    $('#handoff').style.setProperty('--pc', PCOL[player]);
+    $('#hoTitle').textContent = nm[player] + ' の番です';
+    $('#hoText').textContent = next === 'trap'
+      ? '端末を' + nm[player] + 'に渡してください。' + other + 'は画面を見ないでください。あなたはトラップを仕掛ける側です。'
+      : '端末を' + nm[player] + 'に渡してください。トラップの位置は伏せられています。' + other + 'は画面を見ないでください。あなたは押す側です。';
+    $('#handoff').hidden = false; $('#boardWrap').classList.add('cover');
+    setBanner(next === 'trap' ? 'trap' : 'press', '端末の受け渡し中です。準備ができたら下のボタンを押します。', next === 'trap' ? 'var(--trap)' : PCOL[player]);
+    setActive(player); renderHud();
+  }
+
+  function enterTrapPhase() {
+    state.phase = 'trap';
+    hideHandoff(); clearMarks(); clearSelection(); hideResult();
+    const p = state.trapper, nm = names();
+    stage.style.setProperty('--bc', 'var(--trap)');
+    board.dataset.mode = 'trap';
+    setBanner('trap', state.mode === 'ai'
+      ? 'AIが押しそうな数字を読んで、トラップを1つ仕掛けよう。'
+      : nm[p] + 'だけが画面を見てください。相手に見せずに、トラップを1つ選びます。', 'var(--trap)');
+    const c = $('#btnConfirm');
+    c.hidden = false; c.disabled = true; c.dataset.kind = 'trap'; c.textContent = 'トラップを仕掛ける';
+    $('#btnNext').hidden = true;
+    setActive(p); renderHud();
+  }
+
+  function enterPressPhase() {
+    state.phase = 'press';
+    hideHandoff(); clearMarks(); clearSelection(); hideResult();
+    const p = state.presser, nm = names();
+    stage.style.setProperty('--bc', PCOL[p]);
+    board.dataset.mode = 'press';
+    setBanner('press', state.mode === 'ai'
+      ? 'AIはどこかに電流を仕掛けた。押すスイッチを1つ選ぼう。'
+      : nm[p] + 'の番です。トラップの位置は画面に出ていません。押すスイッチを1つ選びます。', PCOL[p]);
+    const c = $('#btnConfirm');
+    c.hidden = false; c.disabled = true; c.dataset.kind = 'press'; c.textContent = 'このスイッチを押す';
+    $('#btnNext').hidden = true;
+    setActive(p); renderHud();
+  }
+
+  function pick(n) {
+    if (state.phase !== 'trap' && state.phase !== 'press') return;
+    state.selected = n;
+    $$('.sw', board).forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.n === n)));
+    $('#btnConfirm').disabled = false;
+    sfx.tap();
+  }
+
+  async function onConfirm() {
+    const g = state.gen;
+    if (state.mode === 'online') { olConfirm(); return; }
+    if (state.selected === null) return;
+    if (state.phase === 'trap') {
+      hiddenTrap = state.selected;
+      clearSelection();
+      sfx.set();
+      if (state.mode === 'pvp') { showHandoff(state.presser, 'press'); return; }
+      state.phase = 'aithink'; lockBoard();
+      $('#btnConfirm').hidden = true;
+      cell(hiddenTrap).classList.add('mine');          // 1人用のときだけ、自分の仕掛けを自分の画面に表示
+      setActive(1);
+      setBanner('press', 'AIがスイッチを選んでいます…', PCOL[1]);
+      await wait(1000 + (FAST ? 0 : Math.random() * 600)); if (g !== state.gen) return;
+      const press = C.ai.press(snapshot(), state.level);
+      reveal(hiddenTrap, press);
+    } else if (state.phase === 'press') {
+      const press = state.selected;
+      clearSelection();
+      reveal(hiddenTrap, press);
+    }
+  }
+
+  async function reveal(trap, press) {
+    const g = state.gen;
+    state.phase = 'reveal';
+    const { trapper, presser } = state, nm = names();
+    const res = C.resolveRound(trap, press);
+    state.history.push({ round: state.round, trapper, presser, trap, press, hit: res.hit, pressDelta: res.pressDelta, trapDelta: res.trapDelta });
+    hiddenTrap = null;
+    hideHandoff(); clearMarks(); clearSelection();
+    $('#btnConfirm').hidden = true; $('#btnNext').hidden = true;
+    board.dataset.mode = 'reveal'; board.classList.add('revealing');
+    setBanner('open', '両者の選択を公開します。', 'var(--heat-hi)');
+    setActive(-1);
+    await wait(700); if (g !== state.gen) return;
+
+    const pc = cell(press);
+    pc.style.setProperty('--pc', PCOL[presser]);
+    pc.classList.add('r-press'); sfx.set();
+    $('#bannerMsg').textContent = nm[presser] + 'が ' + press + ' のスイッチを押した。';
+    await wait(1000); if (g !== state.gen) return;
+
+    const tc = cell(trap);
+    tc.classList.add('r-trap');
+    if (res.hit) {
+      tc.classList.add('r-hit'); board.classList.add('shock'); sfx.hit(); buzz([60, 40, 120]);
+    } else { buzz(15); }
+    $('#bannerMsg').textContent = 'トラップがあったのは ' + trap + ' のスイッチ。';
+    await wait(res.hit ? 1100 : 900); if (g !== state.gen) return;
+
+    const before = state.scores.slice();
+    state.scores[presser] += res.pressDelta;
+    state.scores[trapper] += res.trapDelta;
+    [0, 1].forEach(i => countTo($('.pscore', $('#pc' + i)), before[i], state.scores[i]));
+    floatDelta(presser, res.pressDelta); floatDelta(trapper, res.trapDelta);
+
+    const rb = $('#resBig'), rt = $('#resText'), tag = $('#resTag');
+    if (res.hit) {
+      tag.textContent = 'TRAP HIT';
+      rb.textContent = '−12 / +12'; rb.className = 'res-big bad';
+      rt.textContent = nm[presser] + 'がトラップを踏んで−12点。' + nm[trapper] + 'が+12点を獲得。';
+      sfx.hit();
+    } else {
+      tag.textContent = 'SAFE';
+      rb.textContent = '+' + press; rb.className = 'res-big good';
+      rt.textContent = nm[presser] + 'が' + press + '点を獲得。' + nm[trapper] + 'のトラップ(' + trap + ')は空振り。';
+      sfx.ok();
+    }
+    const ai = state.mode === 'ai' ? C.ai.insight(snapshot(), state.level) : null;
+    const ra = $('#resAi');
+    ra.hidden = !ai; ra.textContent = ai || '';
+    $('#result').hidden = false;
+    renderMemo();
+    const nx = $('#btnNext');
+    nx.textContent = state.round === C.ROUNDS ? '結果を見る' : '次のラウンドへ';
+    nx.hidden = false;
+    state.phase = 'revealed';
+  }
+
+  function onNext() {
+    if (state.phase === 'olabort') { toMenu(); return; }
+    if (state.phase !== 'revealed') return;
+    if (state.round >= C.ROUNDS) { showFinal(); return; }
+    if (state.mode === 'online' && ol.oppLeft) { olAbortUi('相手が退出しました。'); return; }
+    state.round++;
+    beginRound();
+  }
+
+  /* ---- 結果 ---- */
+  function computeStats(h) {
+    const st = [0, 1].map(() => ({ normal: 0, trapGain: 0, hitLoss: 0, total: 0, trapHits: 0, byNum: new Array(13).fill(0), best: null }));
+    h.forEach(r => {
+      if (r.hit) {
+        st[r.trapper].trapGain += C.PEN; st[r.trapper].trapHits++; st[r.trapper].byNum[r.trap] += C.PEN;
+        st[r.presser].hitLoss -= C.PEN;
+      } else {
+        st[r.presser].normal += r.press; st[r.presser].byNum[r.press] += r.press;
+      }
+    });
+    st.forEach(s => {
+      s.total = s.normal + s.trapGain + s.hitLoss;
+      let best = 0, bn = 0;
+      for (let n = 1; n <= 12; n++) if (s.byNum[n] > 0 && s.byNum[n] >= best) { best = s.byNum[n]; bn = n; }
+      s.best = bn ? { n: bn, pts: best } : null;
+    });
+    return st;
+  }
+  const sgn = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v);
+
+  function showFinal() {
+    state.phase = 'final';
+    showScreen('Final');
+    const nm = names(), [a, b] = state.scores, st = computeStats(state.history);
+    if (st[0].total !== a || st[1].total !== b) console.warn('score mismatch', st, state.scores);
+    const win = a === b ? -1 : (a > b ? 0 : 1);
+    const vm = $('#vMain'), vs = $('#vSub');
+    const me = state.mode === 'ai' ? 0 : state.mode === 'online' ? ol.seat : -1;
+    if (win === -1) { vs.textContent = 'FINAL · ' + a + ' - ' + b; vm.textContent = 'DRAW'; vm.dataset.r = 'draw'; }
+    else if (me >= 0) {
+      vs.textContent = 'FINAL · ' + a + ' - ' + b;
+      vm.textContent = win === me ? 'YOU WIN' : 'YOU LOSE'; vm.dataset.r = win === me ? 'win' : 'lose';
+    } else {
+      vs.textContent = 'FINAL · ' + a + ' - ' + b;
+      vm.textContent = nm[win] + ' WIN'; vm.dataset.r = 'win';
+    }
+    (win === -1 ? sfx.ok : (me >= 0 && win !== me ? sfx.lose : sfx.win))();
+
+    const fs = $('#finalScore');
+    const card = (i, cls) => '<div class="fs ' + cls + (win === i ? ' win' : '') + '" style="--pc:' + PCOL[i] + '"><span class="n">' + label(i) + '</span><span class="s">' + state.scores[i] +
+      '</span><span class="tag">' + (win === -1 ? 'DRAW' : win === i ? 'WINNER' : 'LOSER') + '</span></div>';
+    fs.innerHTML = card(0, '') + '<span class="vs">VS</span>' + card(1, 'right');
+
+    $('#stats').innerHTML = [0, 1].map(i => {
+      const s = st[i];
+      return '<div class="stat" style="--pc:' + PCOL[i] + '"><h3>' + label(i) + '</h3><dl>' +
+        '<dt>通常得点</dt><dd>' + sgn(s.normal) + '</dd>' +
+        '<dt>トラップ得点</dt><dd>' + sgn(s.trapGain) + '</dd>' +
+        '<dt>被弾失点</dt><dd>' + sgn(s.hitLoss) + '</dd>' +
+        '<dt class="tot">合計</dt><dd class="tot">' + sgn(s.total) + '</dd>' +
+        '<dt>トラップ成功</dt><dd>' + s.trapHits + '回</dd>' +
+        '<dt class="wide">最も得点を稼いだ数字</dt><dd class="wide">' + (s.best ? s.best.n + '(+' + s.best.pts + ')' : '—') + '</dd>' +
+        '</dl></div>';
+    }).join('');
+
+    let t = '<thead><tr><th>R</th><th>仕掛け</th><th>押した</th><th>' + nm[0] + '</th><th>' + nm[1] + '</th></tr></thead><tbody>';
+    state.history.forEach(h => {
+      const d = [0, 0]; d[h.presser] = h.pressDelta; d[h.trapper] = h.trapDelta;
+      t += '<tr><td>' + h.round + '</td>' +
+        '<td><span class="who" style="--pc:' + PCOL[h.trapper] + '">' + nm[h.trapper] + '</span> ' + h.trap + '</td>' +
+        '<td><span class="who" style="--pc:' + PCOL[h.presser] + '">' + nm[h.presser] + '</span> ' + h.press + (h.hit ? ' <span class="hit">HIT</span>' : '') + '</td>' +
+        '<td class="num ' + (d[0] > 0 ? 'good' : d[0] < 0 ? 'bad' : '') + '">' + sgn(d[0]) + '</td>' +
+        '<td class="num ' + (d[1] > 0 ? 'good' : d[1] < 0 ? 'bad' : '') + '">' + sgn(d[1]) + '</td></tr>';
+    });
+    $('#logTable').innerHTML = t + '</tbody>';
+    let msg;
+    if (me >= 0) {
+      const mine = state.scores[me], opp = state.scores[1 - me];
+      msg = win === -1 ? '12 SWITCHで' + a + '対' + b + 'の引き分け。' : win === me ? '12 SWITCHで' + mine + '対' + opp + 'で勝った!' : '12 SWITCHで' + mine + '対' + opp + 'で負けた…';
+    } else { msg = '12 SWITCH 2人対戦の結果は' + a + '対' + b + '。'; }
+    $('#btnShareResult').href = lineLink(msg + ' 一緒に遊ぼう\n' + ARTIFACT_URL);
+    $('#btnAgain').hidden = state.mode === 'online';
+    window.scrollTo(0, 0);
+  }
+
+  /* ================= LINE共有 ================= */
+  const ARTIFACT_URL = location.origin + location.pathname;
+  function lineLink(text) { return 'https://line.me/R/msg/text/?' + encodeURIComponent(text); }
+  const inviteUrl = code => ARTIFACT_URL + '#r-' + code;
+  $('#btnShareApp').href = lineLink('12 SWITCH、やってみて。12個のスイッチのうち1つだけ電流トラップ。相手の裏をかいて勝て。\n' + ARTIFACT_URL);
+
+  /* ================= オンライン対戦 (db + user) =================
+     共有ドキュメント: rooms/CODE と rooms/CODE/moves/rN-commit | rN-press | rN-reveal
+     トラップは先にハッシュだけを共有し、相手が押した後に数字とsaltを公開する(コミット&リビール)。
+     公開前の共有データにはトラップの数字そのものが存在しない。 */
+  const ol = {};
+  function olReset() {
+    Object.assign(ol, {
+      on: false, code: null, seat: 0, room: null, moves: {}, unsubs: [], secrets: {}, started: false, over: false,
+      busy: false, wrote: {}, oppLeft: false, gotRoom: false, gotMoves: false, syncing: false, dirty: false
+    });
+  }
+  olReset();
+  let olReady = null;
+  const OL_MSG = {
+    noDb: 'オンライン対戦を使うには、claude.aiでこのページを開いてサインインしてください。',
+    noId: 'オンライン対戦を使うには、claude.aiでサインインしてください。',
+    readonly: 'オンライン対戦には、このページの編集権限が必要です。ページの持ち主に、編集者として招待してもらってください。',
+    nocrypto: 'この環境ではオンライン対戦を使えません。',
+    err: '接続に失敗しました。ページを開き直してください。'
+  };
+  function olInit() {
+    if (olReady) return olReady;
+    olReady = (async () => {
+      try {
+        const cl = window.claude;
+        const db = cl && cl.use ? await cl.use('db') : null;
+        const user = cl && cl.use ? await cl.use('user') : null;
+        if (!db || !user) return { ok: false, why: 'noDb' };
+        const uid = await user.id();
+        if (!uid) return { ok: false, why: 'noId' };
+        if ((await user.can('data.write')) === false) return { ok: false, why: 'readonly' };
+        if (!(window.crypto && crypto.subtle && crypto.getRandomValues)) return { ok: false, why: 'nocrypto' };
+        ol.db = db; ol.user = user; ol.uid = uid;
+        return { ok: true };
+      } catch (e) { return { ok: false, why: 'err' }; }
+    })();
+    return olReady;
+  }
+  async function olCheck() {
+    const st = $('#olStatus'), cb = $('#btnCreate'), jb = $('#btnJoin');
+    cb.disabled = true; jb.disabled = true;
+    st.textContent = '接続を確認中…';
+    const r = await olInit();
+    if (cfg.mode !== 'online' || ol.on) return;
+    if (r.ok) {
+      st.textContent = '部屋を作って招待リンクを送るか、友達から届いた部屋コードを入力します。';
+      cb.disabled = false; jb.disabled = false;
+    } else st.textContent = OL_MSG[r.why] || OL_MSG.err;
+  }
+  const hex = u8 => Array.from(u8).map(x => x.toString(16).padStart(2, '0')).join('');
+  function rndHex(n) { const a = new Uint8Array(n); crypto.getRandomValues(a); return hex(a); }
+  async function sha(text) { return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))); }
+  const commitHash = (code, round, trap, salt) => sha(code + '|' + round + '|' + trap + '|' + salt);
+  const CODE_CH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  function genCode() {
+    const a = new Uint8Array(4); crypto.getRandomValues(a);
+    return Array.from(a).map(x => CODE_CH[x % CODE_CH.length]).join('');
+  }
+  const mvPath = (r, kind) => 'rooms/' + ol.code + '/moves/r' + r + '-' + kind;
+  const secretRef = r => ol.db.collection('data/users/' + ol.uid).doc('s-' + ol.code + '-' + r);
+  const okNum = n => Number.isInteger(n) && n >= 1 && n <= 12;
+  function olNote(msg) { $('#olStatus').textContent = msg; }
+
+  async function olCreate() {
+    const r = await olInit(); if (!r.ok || ol.on) return;
+    $('#btnCreate').disabled = true;
+    try {
+      let code = null;
+      for (let i = 0; i < 6 && !code; i++) {
+        const c = genCode();
+        const snap = await ol.db.doc('rooms/' + c).get();
+        if (!snap.exists) code = c;
+      }
+      if (!code) { olNote('部屋を作れませんでした。もう一度試してください。'); return; }
+      await ol.db.doc('rooms/' + code).set({ host: ol.uid, guest: null, status: 'waiting', createdAt: Date.now() });
+      sfx.ok(); olEnter(code, 0);
+    } catch (e) { olNote('部屋を作れませんでした(' + ((e && e.code) || 'error') + ')。'); }
+    finally { $('#btnCreate').disabled = false; }
+  }
+  async function olJoin(raw) {
+    const code = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (code.length !== 4) { olNote('部屋コードは4文字です。'); return; }
+    const r = await olInit();
+    if (!r.ok) { olNote(OL_MSG[r.why] || OL_MSG.err); return; }
+    if (ol.on) return;
+    olNote('部屋 ' + code + ' に接続中…');
+    try {
+      const ref = ol.db.doc('rooms/' + code), snap = await ref.get();
+      if (!snap.exists) { olNote('部屋 ' + code + ' が見つかりません。コードを確認してください。'); return; }
+      const d = snap.data();
+      if (d.host === ol.uid) { olEnter(code, 0); return; }
+      if (d.guest === ol.uid) { olEnter(code, 1); return; }
+      if (d.guest) { olNote('この部屋は満員です。'); return; }
+      await ref.update({ guest: ol.uid });
+      const after = await ref.get();
+      if (!after.exists || after.data().guest !== ol.uid) { olNote('この部屋は満員です。'); return; }
+      sfx.ok(); olEnter(code, 1);
+    } catch (e) { olNote('参加できませんでした(' + ((e && e.code) || 'error') + ')。'); }
+  }
+  function olEnter(code, seat) {
+    olReset(); ol.on = true; ol.code = code; ol.seat = seat;
+    const host = seat === 0, url = inviteUrl(code);
+    $('#lobbyCode').textContent = code;
+    $('#lobbyShare').hidden = !host;
+    $('#lobbyStatus').textContent = host ? '友達の参加を待っています…' : '接続中…';
+    $('#lobbyUrl').value = url;
+    $('#lobbyLine').href = lineLink('12 SWITCHで対戦しよう。部屋コードは ' + code + ' です。\n' + url);
+    state.phase = 'lobby';
+    showScreen('Lobby');
+    ol.unsubs.push(ol.db.doc('rooms/' + code).onSnapshot(olOnRoom, olOnErr));
+    ol.unsubs.push(ol.db.collection('rooms/' + code + '/moves').onSnapshot(olOnMoves, olOnErr));
+  }
+  function olTeardown() { ol.unsubs.forEach(u => { try { u(); } catch (e) { /* 解除済み */ } }); olReset(); }
+  function olFail(msg) {
+    olTeardown(); state.gen++; state.phase = 'title';
+    showScreen('Title'); olNote(msg);
+  }
+  function olOnErr(e) { if (ol.on && state.phase !== 'final') olFail('接続が切れました(' + ((e && e.code) || 'error') + ')。もう一度部屋に入ってください。'); }
+  const inAnim = () => state.phase === 'reveal' || state.phase === 'revealed';
+  function olOnRoom(snap) {
+    if (!ol.on) return;
+    ol.gotRoom = true;
+    if (!snap.exists) {
+      if (state.phase === 'final') return;
+      if (ol.started) { ol.oppLeft = true; if (!inAnim()) olAbortUi('部屋が閉じられました。'); }
+      else olFail('部屋が閉じられました。');
+      return;
+    }
+    ol.room = snap.data();
+    if (ol.started && state.phase !== 'final' && ol.room['left' + (1 - ol.seat)]) {
+      ol.oppLeft = true; if (!inAnim()) olAbortUi('相手が退出しました。');
+    }
+    olTryStart();
+  }
+  function olOnMoves(snap) {
+    if (!ol.on) return;
+    const m = {}; snap.docs.forEach(d => { m[d.id] = d.data(); });
+    ol.moves = m; ol.gotMoves = true;
+    if (ol.started) olSync(); else olTryStart();
+  }
+  function olTryStart() {
+    if (ol.started || !ol.gotRoom || !ol.gotMoves) return;
+    if (!ol.room || !ol.room.guest) return;
+    olStartGame();
+  }
+  function olStartGame() {
+    ol.started = true;
+    state.gen++; state.mode = 'online'; state.level = 2; state.round = 1; state.scores = [0, 0]; state.history = [];
+    state.selected = null; hiddenTrap = null;
+    $('#memo').open = false; $('#btnAgain').hidden = true;
+    for (let r = 1; r <= C.ROUNDS; r++) {   // 再接続時は公開済みのラウンドを復元する
+      const c = ol.moves['r' + r + '-commit'], pr = ol.moves['r' + r + '-press'], v = ol.moves['r' + r + '-reveal'];
+      if (!c || !pr || !v || !okNum(v.trap) || !okNum(pr.press)) break;
+      const T = C.trapperOf(r), res = C.resolveRound(v.trap, pr.press);
+      state.history.push({ round: r, trapper: T, presser: 1 - T, trap: v.trap, press: pr.press, hit: res.hit, pressDelta: res.pressDelta, trapDelta: res.trapDelta });
+      state.scores[1 - T] += res.pressDelta; state.scores[T] += res.trapDelta; state.round = r + 1;
+    }
+    showScreen('Game'); renderMemo();
+    if (state.round > C.ROUNDS) { state.round = C.ROUNDS; showFinal(); return; }
+    beginRound();
+  }
+
+  /* 公開データから「いま自分がすること」を毎回導き出す */
+  async function olSync() {
+    if (ol.syncing) { ol.dirty = true; return; }
+    ol.syncing = true;
+    try { do { ol.dirty = false; await olStep(); } while (ol.dirty); }
+    catch (e) { olError('通信に問題が起きました。しばらく待っても進まない場合は、いったん退出してください。'); }
+    finally { ol.syncing = false; }
+  }
+  async function olStep() {
+    if (!ol.on || ol.over || state.mode !== 'online') return;
+    if (inAnim() || state.phase === 'final' || state.phase === 'olabort') return;
+    const r = state.round, T = state.trapper, me = ol.seat;
+    const commit = ol.moves['r' + r + '-commit'], press = ol.moves['r' + r + '-press'], rv = ol.moves['r' + r + '-reveal'];
+    if (commit && press && rv) {
+      const ok = okNum(rv.trap) && okNum(press.press) && (await commitHash(ol.code, r, rv.trap, rv.salt)) === commit.hash;
+      if (!ok) { olAbortUi('相手の公開内容が、事前の宣言と一致しませんでした。この対戦は無効です。'); return; }
+      reveal(rv.trap, press.press);
+      return;
+    }
+    if (me === T) {
+      if (!commit) { if (state.phase !== 'trap') olPrompt('trap'); return; }
+      if (!press) { olWait('相手がスイッチを選んでいます…'); return; }
+      olWait('トラップを公開します…');
+      await olWriteReveal(r);
+    } else {
+      if (!commit) { olWait('相手がトラップを仕掛けています…'); return; }
+      if (!press) { if (state.phase !== 'press') olPrompt('press'); return; }
+      olWait('相手がトラップを公開します…');
+    }
+  }
+  function olError(msg) { $('#bannerMsg').textContent = msg; }
+  function olWait(msg) {
+    const T = state.trapper, me = ol.seat;
+    state.phase = 'olwait'; lockBoard(); hideHandoff(); hideResult();
+    $('#btnConfirm').hidden = true; $('#btnNext').hidden = true;
+    clearSelection();
+    $$('.sw', board).forEach(b => b.classList.remove('mine'));
+    const sec = ol.secrets[state.round];
+    if (me === T && sec && ol.moves['r' + state.round + '-commit']) cell(sec.trap).classList.add('mine');
+    setBanner(me === T ? 'trap' : 'press', msg, me === T ? 'var(--trap)' : PCOL[me]);
+    setActive(1 - me);
+  }
+  function olPrompt(kind) {
+    const me = ol.seat;
+    state.phase = kind; hideHandoff(); clearMarks(); clearSelection(); hideResult();
+    const c = $('#btnConfirm');
+    if (kind === 'trap') {
+      stage.style.setProperty('--bc', 'var(--trap)'); board.dataset.mode = 'trap';
+      setBanner('trap', 'あなたはトラップを仕掛ける側です。相手が押しそうな数字を読んで、1つ選ぼう。', 'var(--trap)');
+      c.dataset.kind = 'trap'; c.textContent = 'トラップを仕掛ける';
+    } else {
+      stage.style.setProperty('--bc', PCOL[me]); board.dataset.mode = 'press';
+      setBanner('press', '相手がトラップを仕掛け終えました。押すスイッチを1つ選ぼう。', PCOL[me]);
+      c.dataset.kind = 'press'; c.textContent = 'このスイッチを押す';
+    }
+    c.hidden = false; c.disabled = true; $('#btnNext').hidden = true;
+    setActive(me); renderHud();
+  }
+  async function olConfirm() {
+    const n = state.selected, r = state.round;
+    if (n === null || ol.busy || (state.phase !== 'trap' && state.phase !== 'press')) return;
+    ol.busy = true;
+    try {
+      if (state.phase === 'trap') {
+        const salt = rndHex(16), hash = await commitHash(ol.code, r, n, salt);
+        ol.secrets[r] = { trap: n, salt };
+        try { await secretRef(r).set({ trap: n, salt }); } catch (e) { /* 再接続用の控え。失敗しても続行 */ }
+        await ol.db.doc(mvPath(r, 'commit')).set({ by: ol.seat, hash });
+        sfx.set(); olWait('相手がスイッチを選んでいます…');
+      } else {
+        await ol.db.doc(mvPath(r, 'press')).set({ by: ol.seat, press: n });
+        sfx.set(); olWait('相手がトラップを公開します…');
+      }
+    } catch (e) {
+      olError('送信に失敗しました。通信を確認して、もう一度押してください。');
+    } finally { ol.busy = false; }
+  }
+  async function olWriteReveal(r) {
+    if (ol.wrote['rv' + r]) return;
+    let sec = ol.secrets[r];
+    if (!sec) { try { const d = await secretRef(r).get(); if (d.exists) sec = d.data(); } catch (e) { /* 復元失敗 */ } }
+    if (!sec) { olAbortUi('トラップの情報を復元できませんでした。この対戦は続けられません。'); return; }
+    ol.wrote['rv' + r] = true;
+    try { await ol.db.doc(mvPath(r, 'reveal')).set({ by: ol.seat, trap: sec.trap, salt: sec.salt }); }
+    catch (e) { ol.wrote['rv' + r] = false; olError('公開に失敗しました。通信を確認してください。'); }
+  }
+  function olAbortUi(msg) {
+    ol.over = true; state.phase = 'olabort'; lockBoard(); hideHandoff();
+    $('#btnConfirm').hidden = true;
+    $('#bannerMsg').textContent = msg;
+    const nx = $('#btnNext'); nx.textContent = 'メニューへ'; nx.hidden = false;
+    setActive(-1);
+  }
+  async function olWipe(db, uid, code) {
+    try {
+      const s = await db.collection('rooms/' + code + '/moves').get();
+      await Promise.all(s.docs.map(d => db.doc('rooms/' + code + '/moves/' + d.id).delete()));
+    } catch (e) { /* 片付けは失敗してもよい */ }
+    try { await db.doc('rooms/' + code).delete(); } catch (e) { /* 同上 */ }
+    for (let r = 1; r <= C.ROUNDS; r++) { try { await db.collection('data/users/' + uid).doc('s-' + code + '-' + r).delete(); } catch (e) { /* 同上 */ } }
+  }
+  function olLeave() {
+    if (!ol.on) return;
+    const db = ol.db, uid = ol.uid, code = ol.code, seat = ol.seat;
+    const started = ol.started, done = state.phase === 'final' || ol.oppLeft;
+    olTeardown();
+    (async () => {
+      try {
+        if (!started) { if (seat === 0) await db.doc('rooms/' + code).delete(); else await db.doc('rooms/' + code).update({ guest: null }); }
+        else if (done) await olWipe(db, uid, code);
+        else await db.doc('rooms/' + code).update({ ['left' + seat]: true });
+      } catch (e) { /* 退出は失敗しても画面は戻る */ }
+    })();
+  }
+  async function copyInvite() {
+    const b = $('#lobbyCopy'), inp = $('#lobbyUrl');
+    try { await navigator.clipboard.writeText(inp.value); b.textContent = 'コピーしました'; }
+    catch (e) { inp.focus(); inp.select(); b.textContent = '選択しました。コピーしてください'; }
+    setTimeout(() => { b.textContent = 'リンクをコピー'; }, 2200);
+  }
+  $('#btnCreate').addEventListener('click', olCreate);
+  $('#btnJoin').addEventListener('click', () => olJoin($('#joinCode').value));
+  $('#joinCode').addEventListener('keydown', e => { if (e.key === 'Enter') olJoin($('#joinCode').value); });
+  $('#lobbyCopy').addEventListener('click', copyInvite);
+  $('#lobbyCancel').addEventListener('click', () => toMenu());
+  function handleHash() {
+    const m = /^#r-([A-Za-z0-9]{4})$/.exec(location.hash || '');
+    if (!m || ol.on) return;
+    cfg.mode = 'online'; titleSync();
+    $('#joinCode').value = m[1].toUpperCase();
+    olJoin(m[1]);
+  }
+  window.addEventListener('hashchange', handleHash);
+
+  /* ---- ボタン ---- */
+  $('#btnConfirm').addEventListener('click', onConfirm);
+  $('#btnNext').addEventListener('click', onNext);
+  $('#btnReady').addEventListener('click', () => {
+    if (state.phase !== 'handoff') return;
+    sfx.tap();
+    if (state.handoffNext === 'trap') enterTrapPhase(); else enterPressPhase();
+  });
+  $('#btnAgain').addEventListener('click', () => { sfx.ok(); startGame(state.mode, state.level); });
+  function toMenu() { olLeave(); state.gen++; state.phase = 'title'; hiddenTrap = null; showScreen('Title'); window.scrollTo(0, 0); }
+  $('#btnBack').addEventListener('click', toMenu);
+  $('#btnMenu').addEventListener('click', () => { $('#quitBar').hidden = !$('#quitBar').hidden; });
+  $('#quitYes').addEventListener('click', toMenu);
+  $('#quitNo').addEventListener('click', () => { $('#quitBar').hidden = true; });
+  $('#btnSound').addEventListener('click', () => {
+    soundOn = !soundOn;
+    try { localStorage.setItem('12sw-sound', soundOn ? '1' : '0'); } catch (e) { /* 保存できなくても動く */ }
+    renderSound(); sfx.tap();
+  });
+  renderSound();
+  handleHash();
+})();
+</script>
+
+
+</body>
+</html>
